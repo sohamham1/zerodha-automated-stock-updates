@@ -1,0 +1,32 @@
+{
+  "name": "zerodha-automated-stock-updates",
+  "version": "0.1.0",
+  "description": "Weekly AI portfolio updates for Zerodha holdings using Kite MCP",
+  "type": "module",
+  "bin": {
+    "zerodha-stock-updates": "./src/cli.js"
+  },
+  "scripts": {
+    "setup": "node ./src/cli.js setup",
+    "portfolio:fetch": "node ./src/cli.js portfolio fetch",
+    "report:prepare": "node ./src/cli.js report prepare-for-chatgpt",
+    "report:generate": "node ./src/cli.js report generate --period weekly --include-pdf",
+    "test": "node --test ./tests"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "keywords": [
+    "zerodha",
+    "kite",
+    "mcp",
+    "portfolio",
+    "india",
+    "indian-stocks",
+    "stocks",
+    "ai",
+    "excel",
+    "pdf"
+  ],
+  "license": "MIT"
+}

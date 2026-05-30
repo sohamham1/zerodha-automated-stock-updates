@@ -1,0 +1,38 @@
+{
+  "outputDir": "artifacts",
+  "cacheDir": ".cache",
+  "report": {
+    "includePdf": false,
+    "formats": ["json", "md", "xlsx"]
+  },
+  "kite": {
+    "command": "npx",
+    "args": ["mcp-remote", "https://mcp.kite.trade/mcp"]
+  },
+  "news": {
+    "enabled": true,
+    "perQueryLimit": 4,
+    "queries": [
+      "general",
+      "dividend",
+      "promoter shareholding",
+      "shareholder meeting",
+      "investor presentation",
+      "annual report"
+    ]
+  },
+  "llm": {
+    "provider": "openai",
+    "providers": {
+      "openai": {
+        "model": "gpt-4.1-mini"
+      },
+      "anthropic": {
+        "model": "claude-3-5-haiku-latest"
+      },
+      "gemini": {
+        "model": "gemini-2.0-flash"
+      }
+    }
+  }
+}
