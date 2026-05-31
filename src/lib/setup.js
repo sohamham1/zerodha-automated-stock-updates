@@ -95,13 +95,14 @@ async function askProvider(rl) {
   }
 }
 
-export async function runInteractiveSetup(cwd) {
-  const envPath = path.join(cwd, ".env");
+export async function runInteractiveSetup(cwd, profile = "default") {
+  const isDefault = !profile || profile === "default";
+  const envPath = isDefault ? path.join(cwd, ".env") : path.join(cwd, `.env.${profile}`);
   const existing = await readExistingEnv(envPath);
   const rl = createInterface({ input, output });
 
   try {
-    console.log("Portfolio Weekly Intelligence Reporter setup");
+    console.log(`Portfolio Weekly Intelligence Reporter setup [Profile: ${profile}]`);
     console.log("This saves your settings locally on this machine only.");
     console.log("");
 

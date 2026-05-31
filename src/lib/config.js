@@ -68,34 +68,45 @@ function mergeConfig(base, override) {
   return next;
 }
 
-async function loadEnvFile(cwd) {
-  const envPath = path.join(cwd, ".env");
-  try {
-    await access(envPath);
-  } catch {
-    return;
+async function loadEnvFile(cwd, profile) {
+  const envFiles = [];
+  if (profile && profile !== "default") {
+    envFiles.push(path.join(cwd, `.env.${profile}`));
   }
+  envFiles.push(path.join(cwd, ".env"));
 
-  const content = await readFile(envPath, "utf8");
-  for (const rawLine of content.split(/\r?\n/)) {
-    const line = rawLine.trim();
-    if (!line || line.startsWith("#")) {
+  const loadedKeys = new Set();
+
+  for (const envPath of envFiles) {
+    try {
+      await access(envPath);
+    } catch {
       continue;
     }
-    const pivot = line.indexOf("=");
-    if (pivot === -1) {
-      continue;
-    }
-    const key = line.slice(0, pivot).trim();
-    const value = line.slice(pivot + 1).trim();
-    if (!process.env[key]) {
-      process.env[key] = value;
+
+    const content = await readFile(envPath, "utf8");
+    for (const rawLine of content.split(/\r?\n/)) {
+      const line = rawLine.trim();
+      if (!line || line.startsWith("#")) {
+        continue;
+      }
+      const pivot = line.indexOf("=");
+      if (pivot === -1) {
+        continue;
+      }
+      const key = line.slice(0, pivot).trim();
+      const value = line.slice(pivot + 1).trim();
+      if (!loadedKeys.has(key)) {
+        process.env[key] = value;
+        loadedKeys.add(key);
+      }
     }
   }
 }
 
 export async function loadConfig(cwd, cliFlags = {}) {
-  await loadEnvFile(cwd);
+  const profile = cliFlags.profile || "default";
+  await loadEnvFile(cwd, profile);
 
   let fileConfig = {};
   const configPath = path.join(cwd, "portfolio-intelligence.config.json");
@@ -155,13 +166,19 @@ export async function loadConfig(cwd, cliFlags = {}) {
   if (cliFlags["include-pdf"]) {
     config.report.includePdf = true;
   }
+  if (cliFlags.notify) {
+    config.notify = true;
+  }
 
   config.llm.active = config.llm.providers?.[config.llm.provider] || null;
 
+  config.profile = profile;
   config.cwd = cwd;
+  
+  const profileSubdir = profile !== "default" ? profile : "";
   config.paths = {
-    outputDir: path.resolve(cwd, config.outputDir),
-    cacheDir: path.resolve(cwd, config.cacheDir),
+    outputDir: path.resolve(cwd, config.outputDir, profileSubdir),
+    cacheDir: path.resolve(cwd, config.cacheDir, profileSubdir),
   };
 
   await mkdir(config.paths.outputDir, { recursive: true });
@@ -169,3 +186,4 @@ export async function loadConfig(cwd, cliFlags = {}) {
 
   return config;
 }
+

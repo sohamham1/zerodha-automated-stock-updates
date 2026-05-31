@@ -82,3 +82,29 @@ export function sentimentLabel(score) {
   }
   return "neutral";
 }
+
+export class ProgressLogger {
+  constructor(totalSteps) {
+    this.totalSteps = totalSteps;
+    this.currentStep = 0;
+  }
+
+  next(message) {
+    this.currentStep++;
+    const prefix = `[${this.currentStep}/${this.totalSteps}]`;
+    console.log(`\x1b[36m${prefix}\x1b[0m \x1b[1m${message}\x1b[0m`);
+  }
+
+  info(message) {
+    console.log(`  \x1b[90m▸ ${message}\x1b[0m`);
+  }
+
+  success(message) {
+    console.log(`\x1b[32m✔\x1b[0m \x1b[1m${message}\x1b[0m`);
+  }
+
+  error(message) {
+    console.error(`\x1b[31m✘\x1b[0m \x1b[1;31mError: ${message}\x1b[0m`);
+  }
+}
+

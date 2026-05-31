@@ -173,6 +173,74 @@ export class KiteClient {
     return Array.isArray(trades) ? trades : [];
   }
 
+  async fetchMargins() {
+    const toolName = this.toolMap.has("get_margins")
+      ? "get_margins"
+      : this.toolMap.has("margins")
+        ? "margins"
+        : null;
+
+    if (!toolName) {
+      return {};
+    }
+
+    try {
+      const payload = extractToolPayload(await this.mcp.callTool(toolName, {}));
+      return payload?.data || payload || {};
+    } catch {
+      return {};
+    }
+  }
+
+  async fetchRecentOrders() {
+    const toolName = this.toolMap.has("get_orders")
+      ? "get_orders"
+      : this.toolMap.has("orders")
+        ? "orders"
+        : null;
+
+    if (!toolName) {
+      return [];
+    }
+
+    try {
+      const payload = extractToolPayload(await this.mcp.callTool(toolName, {}));
+      const orders = payload?.data || payload || [];
+      return Array.isArray(orders) ? orders : [];
+    } catch {
+      return [];
+    }
+  }
+
+  async fetchHistoricalData(instrumentToken, interval, fromDate, toDate) {
+    const toolName = this.toolMap.has("get_historical_data")
+      ? "get_historical_data"
+      : this.toolMap.has("historical_data")
+        ? "historical_data"
+        : null;
+
+    if (!toolName) {
+      return [];
+    }
+
+    try {
+      const payload = extractToolPayload(
+        await this.mcp.callTool(toolName, {
+          instrument_token: Number(instrumentToken),
+          interval,
+          from_date: fromDate,
+          to_date: toDate,
+        })
+      );
+      const list = payload?.data?.candles || payload?.candles || payload || [];
+      return Array.isArray(list) ? list : [];
+    } catch (e) {
+      console.error(`[kite-mcp] Error fetching historical data for token ${instrumentToken}:`, e.message);
+      return [];
+    }
+  }
+
+
   mapQuoteBySymbol(quotes) {
     const map = new Map();
     for (const quote of quotes) {

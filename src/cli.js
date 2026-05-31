@@ -5,13 +5,15 @@ import { fetchPortfolioSnapshot } from "./lib/pipeline/fetch-portfolio.js";
 import { generateWeeklyReport } from "./lib/pipeline/generate-report.js";
 import { prepareForChatGpt } from "./lib/pipeline/prepare-for-chatgpt.js";
 import { runInteractiveSetup } from "./lib/setup.js";
+import { registerSchedule } from "./lib/schedule/schedule-task.js";
 
 function printUsage() {
   console.log(`Usage:
-  node ./src/cli.js setup
-  node ./src/cli.js portfolio fetch
-  node ./src/cli.js report prepare-for-chatgpt [--snapshot path]
-  node ./src/cli.js report generate --period weekly [--include-pdf] [--output-dir path]`);
+  node ./src/cli.js setup [--profile name]
+  node ./src/cli.js portfolio fetch [--profile name]
+  node ./src/cli.js report prepare-for-chatgpt [--snapshot path] [--profile name]
+  node ./src/cli.js report generate --period weekly [--include-pdf] [--output-dir path] [--profile name]
+  node ./src/cli.js schedule register [--frequency weekly|biweekly|monthly] [--profile name]`);
 }
 
 function parseFlags(argv) {
@@ -39,8 +41,9 @@ async function main() {
   const flags = parseFlags(rest);
 
   if (domain === "setup") {
-    await runInteractiveSetup(process.cwd());
-    console.log("Setup complete. Your local settings were saved to .env.");
+    await runInteractiveSetup(process.cwd(), flags.profile);
+    const filename = flags.profile && flags.profile !== "default" ? `.env.${flags.profile}` : ".env";
+    console.log(`Setup complete. Your local settings were saved to ${filename}.`);
     return;
   }
 
@@ -70,6 +73,22 @@ async function main() {
       snapshotPath: flags.snapshot ? String(flags.snapshot) : undefined,
     });
     console.log(`Prepared manual-mode packet in ${packet.outputDir}`);
+    return;
+  }
+
+  if (domain === "schedule" && action === "register") {
+    const frequency = flags.frequency || "weekly";
+    if (!["weekly", "biweekly", "monthly"].includes(frequency)) {
+      console.error(`Error: Invalid frequency '${frequency}'. Must be one of: weekly, biweekly, monthly`);
+      process.exitCode = 1;
+      return;
+    }
+    const result = await registerSchedule({
+      cwd: process.cwd(),
+      profile: config.profile,
+      frequency,
+    });
+    console.log(`[schedule] Successfully registered Windows Task Scheduler task: ${result.taskName}`);
     return;
   }
 

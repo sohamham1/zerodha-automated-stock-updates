@@ -9,7 +9,8 @@ import { GeminiSummarizer } from "../summarizers/gemini.js";
 import { HeuristicSummarizer } from "../summarizers/heuristic.js";
 import { exportReportArtifacts } from "../report/exporters.js";
 import { buildWeeklyActivitySummary } from "../portfolio/weekly-activity.js";
-import { weekKey, writeJson } from "../utils.js";
+import { weekKey, writeJson, ProgressLogger } from "../utils.js";
+import { triggerSystemNotification } from "../schedule/schedule-task.js";
 
 function chooseSummarizer(config) {
   if (config.llm?.provider === "openai" && config.llm?.active?.apiKey) {
@@ -50,7 +51,15 @@ function buildPortfolioSummary(holdings) {
 }
 
 export async function generateWeeklyReport({ config, period, includePdf }) {
+  console.log(`Starting Weekly Report Generation [Profile: ${config.profile || "default"}]`);
+  
+  const totalSteps = 4 + 1; // fetch holdings + choosing summarizer + loop stocks + saving files
+  const logger = new ProgressLogger(totalSteps);
+
+  logger.next("Fetching Zerodha portfolio snapshot and margins...");
   const snapshot = await fetchPortfolioSnapshot({ config });
+
+  logger.next("Initializing providers and choosing summarizer...");
   const provider = new GoogleNewsRssProvider(config);
   const brokerageProvider = new BrokerageConsensusProvider(config);
   const summarizer = chooseSummarizer(config);
@@ -63,11 +72,16 @@ export async function generateWeeklyReport({ config, period, includePdf }) {
 
   await mkdir(outputDir, { recursive: true });
 
+  logger.next(`Enriching and summarizing portfolio holdings (total: ${snapshot.holdings.length})...`);
   const holdings = [];
+  let count = 0;
   for (const holding of snapshot.holdings) {
+    count++;
+    logger.info(`[${count}/${snapshot.holdings.length}] Processing ${holding.symbol} (${holding.companyName})...`);
     const evidence = await provider.fetchForHolding(holding);
     const brokerageConsensus = await brokerageProvider.fetchForHolding(holding);
     const summary = await summarizer.summarize(holding, evidence);
+
     const weeklyActivity =
       weeklyActivityMap.get(`${holding.exchange}:${holding.symbol}`) || null;
     const nextHolding = {
@@ -102,16 +116,38 @@ export async function generateWeeklyReport({ config, period, includePdf }) {
   const report = {
     generatedAt: new Date().toISOString(),
     period,
-    summary: buildPortfolioSummary(holdings),
+    profile: config.profile || "default",
+    summary: {
+      ...buildPortfolioSummary(holdings),
+      margins: snapshot.margins || {},
+      ordersCount: (snapshot.orders || []).length,
+    },
     holdings,
+    positions: snapshot.positions || { net: [], day: [] },
+    trades: snapshot.trades || [],
+    orders: snapshot.orders || [],
+    margins: snapshot.margins || {},
   };
 
+  logger.next("Compiling report payload and exporting Excel/PDF artifacts...");
   await exportReportArtifacts({
     config,
     report,
     outputDir,
     includePdf: includePdf || config.report.includePdf,
   });
+
+  logger.success(`Successfully generated report files in: ${outputDir}`);
+
+  if (config.notify) {
+    const profile = config.profile || "default";
+    const dateStr = report.generatedAt.slice(0, 10);
+    const excelFile = path.resolve(outputDir, `report_${dateStr}_${profile}.xlsx`);
+    triggerSystemNotification(
+      "Stock Update Generated",
+      `Your portfolio brief is generated successfully!\n\nPath: ${excelFile}`
+    );
+  }
 
   return {
     outputDir,

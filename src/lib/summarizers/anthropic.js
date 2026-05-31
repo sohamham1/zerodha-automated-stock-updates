@@ -12,6 +12,7 @@ function buildPromptPayload(holding, evidence) {
         weeklyChangePct: holding.weeklyChangePct,
         portfolioWeight: holding.portfolioWeight,
         pnl: holding.pnl,
+        trends: holding.trends || null,
       },
       evidence,
       instructions: {

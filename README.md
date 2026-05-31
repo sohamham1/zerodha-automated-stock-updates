@@ -127,40 +127,49 @@ That gives a simple menu for:
 
 ### CLI path
 
-Guided setup:
+Guided setup (defaults to `.env`, or `.env.<profile>` if `--profile` is specified):
 
 ```bash
-node ./src/cli.js setup
+node ./src/cli.js setup [--profile name]
 ```
 
 Fetch holdings:
 
 ```bash
-node ./src/cli.js portfolio fetch
+node ./src/cli.js portfolio fetch [--profile name]
 ```
 
 Prepare manual ChatGPT packet:
 
 ```bash
-node ./src/cli.js report prepare-for-chatgpt
+node ./src/cli.js report prepare-for-chatgpt [--profile name]
 ```
 
 Generate the full weekly report:
 
 ```bash
-node ./src/cli.js report generate --period weekly --include-pdf
+node ./src/cli.js report generate --period weekly [--include-pdf] [--profile name]
 ```
+
+Register automated report scheduling in Windows Task Scheduler:
+
+```bash
+node ./src/cli.js schedule register [--frequency weekly|biweekly|monthly] [--profile name]
+```
+
+*When a scheduled task runs, it will trigger a Windows system notification displaying the absolute path to the generated Excel file.*
 
 ## Output files
 
-Generated outputs are written under `artifacts/`.
+Generated outputs are written under `artifacts/` (or `artifacts/<profile>/` if using profiles).
 
 Typical outputs:
-
+- `report_<date>_<profile>.xlsx` (Highly formatted Excel workbook containing Portfolio Dashboard, Heatmap, Holdings Detail, Stock Narrative Summaries, and Zerodha Accounts/Recent Transactions History)
+- `report_<date>_<profile>.pdf` (Visual report PDF brief)
 - `report.json`
 - `report.md`
-- `weekly_report.xlsx`
-- `weekly_report.pdf`
+
+
 
 ## Why Kite MCP
 

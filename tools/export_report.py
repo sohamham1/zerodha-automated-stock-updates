@@ -318,7 +318,7 @@ def add_holdings_sheet(workbook, report):
     headers = [
         "Exchange", "Symbol", "Company", "ISIN", "Qty", "Buy Avg", "Last Price",
         "Invested Value", "Current Value", "All-time P&L", "Return %", "Weight %",
-        "Day Move %", "Sentiment", "Broker Coverage",
+        "Day Move %", "50-day SMA", "14-day RSI", "Volatility %", "Sentiment", "Broker Coverage",
     ]
     row = 7
     for i, header in enumerate(headers, start=1):
@@ -326,11 +326,20 @@ def add_holdings_sheet(workbook, report):
     style_header_row(sheet, row, PALETTE["navy"])
     for offset, holding in enumerate(report["holdings"], start=1):
         r = row + offset
+        trends = holding.get("trends") or {}
+        sma50 = trends.get("sma50")
+        rsi14 = trends.get("rsi14")
+        vol = trends.get("volatility")
+        
         vals = [
             holding["exchange"], holding["symbol"], holding["companyName"], holding.get("isin") or "",
             holding["quantity"], holding["averagePrice"], holding["lastPrice"], holding["investedValue"],
             holding["currentValue"], holding["pnl"], holding["returnPct"], holding["portfolioWeight"],
-            holding["weeklyChangePct"], holding["summary"]["sentiment"].title(),
+            holding["weeklyChangePct"],
+            format_currency(sma50) if sma50 is not None else "N/A",
+            f"{rsi14:.2f}" if rsi14 is not None else "N/A",
+            f"{vol:.2f}%" if vol is not None else "N/A",
+            holding["summary"]["sentiment"].title(),
             holding.get("brokerageConsensus", {}).get("scannedCount", 0),
         ]
         for i, value in enumerate(vals, start=1):
@@ -342,9 +351,9 @@ def add_holdings_sheet(workbook, report):
             color=PALETTE["green"] if holding["pnl"] >= 0 else PALETTE["red"],
         )
         sheet.cell(row=r, column=11).fill = heat_fill(holding["returnPct"])
-        sheet.cell(row=r, column=14).fill = sentiment_fill(holding["summary"]["sentiment"])
-    style_body_range(sheet, row + 1, row + len(report["holdings"]), left_cols={1, 2, 3, 4, 14})
-    set_widths(sheet, {"A": 10, "B": 14, "C": 22, "D": 18, "E": 8, "F": 12, "G": 12, "H": 14, "I": 14, "J": 14, "K": 12, "L": 12, "M": 12, "N": 12, "O": 14})
+        sheet.cell(row=r, column=17).fill = sentiment_fill(holding["summary"]["sentiment"])
+    style_body_range(sheet, row + 1, row + len(report["holdings"]), left_cols={1, 2, 3, 4, 17})
+    set_widths(sheet, {"A": 10, "B": 14, "C": 22, "D": 18, "E": 8, "F": 12, "G": 12, "H": 14, "I": 14, "J": 14, "K": 12, "L": 12, "M": 12, "N": 14, "O": 12, "P": 14, "Q": 12, "R": 14})
     sheet.freeze_panes = "A8"
 
 
@@ -424,16 +433,109 @@ def add_sources_sheet(workbook, report):
     sheet.freeze_panes = "A8"
 
 
+def safe_get_float(d, key, default=0.0):
+    try:
+        val = d.get(key)
+        if val is None:
+            return default
+        return float(val)
+    except:
+        return default
+
+
+def add_account_transactions_sheet(workbook, report):
+    sheet = workbook.create_sheet("Account & Transactions")
+    apply_cover(
+        sheet,
+        "Account Margins & Orders History",
+        "Available cash margins and recent order history tracked from Zerodha.",
+        report["generatedAt"],
+    )
+    
+    # 1. Available Margins section
+    sheet["A7"] = "Available Margins / Cash"
+    sheet["A7"].font = Font(name="Aptos", size=12, bold=True, color=PALETTE["navy"])
+    
+    margins = report.get("margins") or {}
+    equity = margins.get("equity", {}) or margins
+    
+    headers_margins = ["Segment", "Available Cash", "Used Margin", "Available Margin"]
+    row_idx = 9
+    for i, header in enumerate(headers_margins, start=1):
+        sheet.cell(row=row_idx, column=i, value=header)
+    style_header_row(sheet, row_idx, PALETTE["steel"])
+    
+    row_idx += 1
+    sheet.cell(row=row_idx, column=1, value="Equity")
+    sheet.cell(row=row_idx, column=2, value=format_currency(safe_get_float(equity, "cash") or safe_get_float(margins, "cash") or 0.0))
+    sheet.cell(row=row_idx, column=3, value=format_currency(safe_get_float(equity, "used") or safe_get_float(margins, "used") or 0.0))
+    sheet.cell(row=row_idx, column=4, value=format_currency(safe_get_float(equity, "net") or safe_get_float(margins, "net") or 0.0))
+    
+    commodity = margins.get("commodity", {})
+    if commodity:
+        row_idx += 1
+        sheet.cell(row=row_idx, column=1, value="Commodity")
+        sheet.cell(row=row_idx, column=2, value=format_currency(safe_get_float(commodity, "cash") or 0.0))
+        sheet.cell(row=row_idx, column=3, value=format_currency(safe_get_float(commodity, "used") or 0.0))
+        sheet.cell(row=row_idx, column=4, value=format_currency(safe_get_float(commodity, "net") or 0.0))
+        
+    style_body_range(sheet, 9, row_idx, left_cols={1})
+    
+    # 2. Recent Orders section
+    row_idx += 3
+    sheet.cell(row=row_idx, column=1, value="Recent Orders History").font = Font(name="Aptos", size=12, bold=True, color=PALETTE["navy"])
+    
+    headers_orders = ["Time", "Symbol", "Exchange", "Transaction", "Order Type", "Quantity", "Price", "Status", "Status Message"]
+    row_idx += 1
+    order_header_row = row_idx
+    for i, header in enumerate(headers_orders, start=1):
+        sheet.cell(row=row_idx, column=i, value=header)
+    style_header_row(sheet, row_idx, PALETTE["navy"])
+    
+    orders = report.get("orders") or []
+    for order in orders:
+        row_idx += 1
+        time_str = order.get("order_timestamp", order.get("timestamp", ""))
+        symbol = order.get("tradingsymbol", order.get("symbol", ""))
+        exchange = order.get("exchange", "")
+        trans = order.get("transaction_type", "")
+        otype = order.get("order_type", "")
+        qty = order.get("quantity", 0)
+        price = order.get("price", 0.0)
+        status = order.get("status", "")
+        status_msg = order.get("status_message", "")
+        
+        sheet.cell(row=row_idx, column=1, value=time_str)
+        sheet.cell(row=row_idx, column=2, value=symbol)
+        sheet.cell(row=row_idx, column=3, value=exchange)
+        sheet.cell(row=row_idx, column=4, value=trans)
+        sheet.cell(row=row_idx, column=5, value=otype)
+        sheet.cell(row=row_idx, column=6, value=qty)
+        sheet.cell(row=row_idx, column=7, value=format_currency(price))
+        sheet.cell(row=row_idx, column=8, value=status)
+        sheet.cell(row=row_idx, column=9, value=status_msg)
+        
+    if row_idx > order_header_row:
+        style_body_range(sheet, order_header_row + 1, row_idx, left_cols={1, 2, 8, 9})
+        
+    set_widths(sheet, {"A": 22, "B": 14, "C": 12, "D": 14, "E": 14, "F": 10, "G": 16, "H": 14, "I": 24})
+
+
 def build_workbook(report, output_dir):
     workbook = Workbook()
     add_dashboard(workbook, report)
     add_heatmap_sheet(workbook, report)
     add_holdings_sheet(workbook, report)
     add_stock_summary_sheet(workbook, report)
+    add_account_transactions_sheet(workbook, report)
     add_sources_sheet(workbook, report)
     for sheet in workbook.worksheets:
         autosize_with_cap(sheet)
-    file_path = os.path.join(output_dir, "weekly_report.xlsx")
+    
+    profile = report.get("profile", "default")
+    date_str = report.get("generatedAt", "")[:10]
+    filename = f"report_{date_str}_{profile}.xlsx"
+    file_path = os.path.join(output_dir, filename)
     workbook.save(file_path)
     return file_path
 
@@ -751,7 +853,10 @@ def source_table(holding):
 
 
 def build_pdf(report, output_dir):
-    file_path = os.path.join(output_dir, "weekly_report.pdf")
+    profile = report.get("profile", "default")
+    date_str = report.get("generatedAt", "")[:10]
+    filename = f"report_{date_str}_{profile}.pdf"
+    file_path = os.path.join(output_dir, filename)
     styles = pdf_styles()
     doc = SimpleDocTemplate(
         file_path,

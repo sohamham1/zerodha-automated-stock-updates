@@ -119,6 +119,7 @@ export class OpenAiSummarizer {
                         weeklyChangePct: holding.weeklyChangePct,
                         portfolioWeight: holding.portfolioWeight,
                         pnl: holding.pnl,
+                        trends: holding.trends || null,
                       },
                       evidence,
                       instructions: {
