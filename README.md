@@ -13,6 +13,9 @@ For each stock in a Zerodha portfolio, the project can generate:
 - all-time P&L and return
 - portfolio weight
 - weekly market move context
+- **technical indicators**: 50-day Simple Moving Average (SMA), 14-day Relative Strength Index (RSI), and price volatility index
+- **account margins**: equity and commodity available cash limits
+- **recent transactions**: weekly orders audit log
 - recent news and corporate developments
 - dividends, corporate actions, and public company updates
 - promoter/shareholding and investor-oriented signals where available
@@ -79,6 +82,8 @@ Supported providers:
 - total invested value
 - all-time P&L
 - all-time return
+- **available cash margins** (equity and commodity segments)
+- **weekly transaction audit count**
 - executive summary
 - immediate action points
 - portfolio weight snapshot
@@ -91,12 +96,18 @@ Supported providers:
 - current value
 - all-time P&L and return
 - weekly move
+- **50-day SMA, 14-day RSI, and Volatility %**
 - brokerage-consensus line where public coverage exists
 - what happened
 - why it may be moving
 - watchpoints
 - missing-evidence caveats
 - source links
+
+### Account & Transactions view (Excel Only)
+
+- detailed equity & commodity cash margins limits
+- recent orders audit list (timestamp, symbol, quantity, price, status, and message)
 
 ## Quick start
 
@@ -224,11 +235,14 @@ These are only ballpark estimates. Real cost depends on evidence volume and summ
 
 ## Current source coverage
 
-`v1` currently includes:
+`v2` currently includes:
 
-- Zerodha holdings through Kite MCP
+- Zerodha holdings, positions, **margins**, and **orders** through Kite MCP
+- **historical price candles** (daily interval) for trend metrics (SMA, RSI, Volatility)
 - public news evidence collection
 - AI summarization through OpenAI, Claude, or Gemini
+- **multi-profile configurations** (isolated `.env.<profile>`, `.cache/`, and `artifacts/`)
+- **automated scheduled tasks** and desktop notification alerts
 
 The enrichment layer is designed to expand later with more official exchange and company-source adapters.
 
