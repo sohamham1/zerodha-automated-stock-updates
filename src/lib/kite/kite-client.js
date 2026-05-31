@@ -60,6 +60,12 @@ export class KiteClient {
       onLog: (text) => {
         const cleaned = String(text).trim();
         if (cleaned) {
+          if (
+            cleaned.includes("DOMException [AbortError]") ||
+            cleaned.includes("This operation was aborted")
+          ) {
+            return;
+          }
           console.error(`[kite-mcp] ${cleaned}`);
         }
       },

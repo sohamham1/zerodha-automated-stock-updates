@@ -6,8 +6,8 @@ const DEFAULT_CONFIG = {
   outputDir: "artifacts",
   cacheDir: ".cache",
   report: {
-    includePdf: false,
-    formats: ["json", "md", "xlsx"],
+    includePdf: true,
+    formats: ["json", "md", "xlsx", "pdf"],
   },
   kite: {
     command: "npx",
@@ -186,4 +186,3 @@ export async function loadConfig(cwd, cliFlags = {}) {
 
   return config;
 }
-

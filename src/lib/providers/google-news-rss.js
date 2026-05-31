@@ -1,4 +1,5 @@
 import { dedupeBy, slugify } from "../utils.js";
+import { cleanDisplayText } from "../report/presentation.js";
 
 const QUERY_TEMPLATES = {
   general: ({ companyName, symbol }) => [`"${companyName}" stock`, `"${symbol}" stock`],
@@ -21,20 +22,11 @@ const QUERY_TEMPLATES = {
   ],
 };
 
-function xmlDecode(value) {
-  return value
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&#39;/g, "'")
-    .replace(/&quot;/g, '"');
-}
-
 function extractTag(block, tagName) {
   const match = block.match(
     new RegExp(`<${tagName}(?:\\s+[^>]*)?>([\\s\\S]*?)</${tagName}>`, "i")
   );
-  return match ? xmlDecode(match[1].replace(/^<!\[CDATA\[(.*)\]\]>$/s, "$1").trim()) : "";
+  return match ? cleanDisplayText(match[1].replace(/^<!\[CDATA\[(.*)\]\]>$/s, "$1").trim()) : "";
 }
 
 export function parseGoogleNewsRss(xml, category) {
@@ -53,7 +45,7 @@ export function parseGoogleNewsRss(xml, category) {
       category,
       source: source || "Google News",
       title,
-      url: link,
+      url: cleanDisplayText(link),
       publishedAt: pubDate || null,
     });
   }

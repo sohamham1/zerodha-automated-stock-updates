@@ -31,6 +31,7 @@ test("buildMarkdownReport includes stock sentiment and sources", () => {
         summary: {
           sentiment: "bullish",
           confidence: "medium",
+          confidenceReason: "Confidence is medium because there is some recent evidence, but coverage is still partial.",
           keyDevelopments: ["Dividend declared"],
           whyMoving: "Positive cash-return signal.",
           watchpoints: ["Track the next quarterly filing."],
@@ -41,6 +42,8 @@ test("buildMarkdownReport includes stock sentiment and sources", () => {
               title: "Dividend declared",
               url: "https://example.com/news",
               source: "Example News",
+              publishedAtLabel: "30 May 2026",
+              freshness: "recent",
             },
           ],
         },
@@ -49,6 +52,7 @@ test("buildMarkdownReport includes stock sentiment and sources", () => {
   });
 
   assert.match(markdown, /Sentiment: bullish/);
+  assert.match(markdown, /Confidence note:/);
   assert.match(markdown, /Dividend declared/);
-  assert.match(markdown, /\[Dividend declared\]\(https:\/\/example\.com\/news\)/);
+  assert.match(markdown, /\[Dividend declared\]\(https:\/\/example\.com\/news\) - Example News - 30 May 2026/);
 });

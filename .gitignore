@@ -1,8 +1,36 @@
 node_modules/
-.env
 dist/
-artifacts/
-.cache/
 coverage/
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+
+# Local secrets and profile-specific env files
+.env
+.env.*
+!.env.example
+
+# Local generated portfolio data and reports
+.cache/
+artifacts/
+
+# Local helper tooling and portable binaries
+.tools/
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+
+# Python virtual environments
+.venv/
+venv/
+env/
+
+# Temporary logs and exports
+*.log
+*.tmp
+*.bak

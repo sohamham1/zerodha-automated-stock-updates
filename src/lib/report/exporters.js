@@ -7,6 +7,7 @@ import { writeJson } from "../utils.js";
 function runPythonExport(config, reportJsonPath, outputDir, includePdf) {
   const pythonCommand = config.python?.executable || "python";
   const scriptPath = path.resolve(config.cwd, "tools", "export_report.py");
+  const requirementsPath = path.resolve(config.cwd, "requirements.txt");
 
   return new Promise((resolve, reject) => {
     const child = spawn(
@@ -30,7 +31,24 @@ function runPythonExport(config, reportJsonPath, outputDir, includePdf) {
 
     child.on("exit", (code) => {
       if (code !== 0) {
-        reject(new Error(`Python export failed with code ${code}: ${stderr}`));
+        const trimmed = stderr.trim();
+        if (trimmed.includes("No module named 'openpyxl'") || trimmed.includes('No module named "openpyxl"')) {
+          reject(
+            new Error(
+              `Python export is missing report dependencies.\nInstall them with:\n  ${pythonCommand} -m pip install -r "${requirementsPath}"\nOriginal error:\n${trimmed}`
+            )
+          );
+          return;
+        }
+        if (trimmed.includes("No module named 'reportlab'") || trimmed.includes('No module named "reportlab"')) {
+          reject(
+            new Error(
+              `Python export is missing report dependencies.\nInstall them with:\n  ${pythonCommand} -m pip install -r "${requirementsPath}"\nOriginal error:\n${trimmed}`
+            )
+          );
+          return;
+        }
+        reject(new Error(`Python export failed with code ${code}: ${trimmed}`));
         return;
       }
       resolve(stdout.trim());

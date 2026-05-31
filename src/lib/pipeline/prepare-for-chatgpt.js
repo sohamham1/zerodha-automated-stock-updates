@@ -102,7 +102,7 @@ export async function prepareForChatGpt({ config, snapshotPath }) {
         brokerageConsensus: holding.brokerageConsensus || {
           scannedCount: 0,
           buy: 0,
-          hold: 0,
+          neutral: 0,
           sell: 0,
           coverageNote: "No brokerage scan in snapshot-only manual mode.",
           items: [],

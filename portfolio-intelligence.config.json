@@ -2,8 +2,8 @@
   "outputDir": "artifacts",
   "cacheDir": ".cache",
   "report": {
-    "includePdf": false,
-    "formats": ["json", "md", "xlsx"]
+    "includePdf": true,
+    "formats": ["json", "md", "xlsx", "pdf"]
   },
   "kite": {
     "command": "npx",

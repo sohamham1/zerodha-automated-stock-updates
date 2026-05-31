@@ -67,8 +67,6 @@ Supported providers:
 
 ## Project scope
 
-`v1` is intentionally narrow:
-
 - Indian stocks only
 - Zerodha holdings only
 - read-only portfolio workflow
@@ -120,6 +118,16 @@ Supported providers:
 For automated mode only:
 
 - your own OpenAI, Claude, or Gemini API key
+
+### Python report dependencies
+
+The Excel and PDF export step needs two Python packages:
+
+```bash
+python -m pip install -r requirements.txt
+```
+
+If your machine uses a different Python command, use that instead of `python`.
 
 ### Beginner-friendly Windows path
 
@@ -232,6 +240,12 @@ These are only ballpark estimates. Real cost depends on evidence volume and summ
 - cached snapshots stay local
 - generated reports stay local
 - if automated AI mode is used, summarization payloads go to the chosen provider under the user's own account
+
+This repo is set up so personal run artifacts are not meant to be committed:
+
+- `.cache/` is ignored
+- `artifacts/` is ignored
+- `.env` and `.env.<profile>` files are ignored
 
 ## Current source coverage
 

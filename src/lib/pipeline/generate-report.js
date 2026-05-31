@@ -8,6 +8,12 @@ import { AnthropicSummarizer } from "../summarizers/anthropic.js";
 import { GeminiSummarizer } from "../summarizers/gemini.js";
 import { HeuristicSummarizer } from "../summarizers/heuristic.js";
 import { exportReportArtifacts } from "../report/exporters.js";
+import {
+  buildHoldingPresentation,
+  finalizeHoldingSummary,
+  normalizeBrokerageConsensus,
+  normalizeEvidenceItems,
+} from "../report/presentation.js";
 import { buildWeeklyActivitySummary } from "../portfolio/weekly-activity.js";
 import { weekKey, writeJson, ProgressLogger } from "../utils.js";
 import { triggerSystemNotification } from "../schedule/schedule-task.js";
@@ -52,6 +58,8 @@ function buildPortfolioSummary(holdings) {
 
 export async function generateWeeklyReport({ config, period, includePdf }) {
   console.log(`Starting Weekly Report Generation [Profile: ${config.profile || "default"}]`);
+  const generatedAt = new Date().toISOString();
+  const reportDate = new Date(generatedAt);
   
   const totalSteps = 4 + 1; // fetch holdings + choosing summarizer + loop stocks + saving files
   const logger = new ProgressLogger(totalSteps);
@@ -78,14 +86,35 @@ export async function generateWeeklyReport({ config, period, includePdf }) {
   for (const holding of snapshot.holdings) {
     count++;
     logger.info(`[${count}/${snapshot.holdings.length}] Processing ${holding.symbol} (${holding.companyName})...`);
-    const evidence = await provider.fetchForHolding(holding);
-    const brokerageConsensus = await brokerageProvider.fetchForHolding(holding);
-    const summary = await summarizer.summarize(holding, evidence);
+    const rawEvidence = await provider.fetchForHolding(holding);
+    const evidence = normalizeEvidenceItems(rawEvidence, reportDate);
+    const rawBrokerageConsensus = await brokerageProvider.fetchForHolding(holding, evidence);
+    const brokerageConsensus = normalizeBrokerageConsensus(rawBrokerageConsensus, reportDate);
 
     const weeklyActivity =
       weeklyActivityMap.get(`${holding.exchange}:${holding.symbol}`) || null;
+    const normalizedHolding = buildHoldingPresentation(
+      {
+        ...holding,
+        evidence,
+        brokerageConsensus,
+        weeklyActivity,
+      },
+      evidence,
+      reportDate
+    );
+    const rawSummary = await summarizer.summarize(normalizedHolding, evidence, reportDate);
+    const summary = finalizeHoldingSummary({
+      holding: {
+        ...normalizedHolding,
+        brokerageConsensus,
+      },
+      evidence,
+      rawSummary,
+      reportDate,
+    });
     const nextHolding = {
-      ...holding,
+      ...normalizedHolding,
       evidence,
       brokerageConsensus,
       weeklyActivity,
@@ -114,7 +143,7 @@ export async function generateWeeklyReport({ config, period, includePdf }) {
   }
 
   const report = {
-    generatedAt: new Date().toISOString(),
+    generatedAt,
     period,
     profile: config.profile || "default",
     summary: {

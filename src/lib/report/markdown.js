@@ -10,6 +10,17 @@ function formatPct(value) {
   return `${(value || 0).toFixed(2)}%`;
 }
 
+function formatCitationMeta(citation) {
+  const parts = [citation.source || "Unknown source"];
+  if (citation.publishedAtLabel) {
+    parts.push(citation.publishedAtLabel);
+  }
+  if (citation.freshness === "fallback" || citation.freshness === "stale") {
+    parts.push("Older reference");
+  }
+  return parts.join(" - ");
+}
+
 function sectionList(items) {
   if (!items || items.length === 0) {
     return "- None\n";
@@ -23,7 +34,7 @@ function renderBrokerageLine(consensus) {
   }
 
   const sellCount = consensus.sell;
-  return `Of the ${consensus.scannedCount} brokerage recommendation items scanned, ${consensus.buy} advise a buy position, ${consensus.hold} advise a hold position, and ${sellCount} advise a sell position. ${consensus.coverageNote}`;
+  return `Of the ${consensus.scannedCount} brokerage recommendation items scanned, ${consensus.buy} advise a buy position, ${consensus.neutral} advise a neutral position, and ${sellCount} advise a sell position. ${consensus.coverageNote}`;
 }
 
 export function buildMarkdownReport(report) {
@@ -45,8 +56,12 @@ export function buildMarkdownReport(report) {
   lines.push("");
 
   for (const stock of report.holdings) {
-    lines.push(`## ${stock.companyName} (${stock.exchange}:${stock.symbol})`);
+    const displayName = stock.displayName || stock.companyName;
+    const ticker = stock.ticker || stock.symbol;
+    const exchangeLabel = stock.exchangeLabel || stock.exchange;
+    lines.push(`## ${displayName} (${ticker})`);
     lines.push("");
+    lines.push(`- Exchange: ${exchangeLabel}`);
     lines.push(`- Quantity: ${stock.quantity}`);
     lines.push(`- Original average buy price: ${formatCurrency(stock.averagePrice)}`);
     lines.push(`- Last price: ${formatCurrency(stock.lastPrice)}`);
@@ -56,6 +71,9 @@ export function buildMarkdownReport(report) {
     lines.push(`- Weekly move: ${formatPct(stock.weeklyChangePct)}`);
     lines.push(`- Sentiment: ${stock.summary.sentiment}`);
     lines.push(`- Confidence: ${stock.summary.confidence}`);
+    if (stock.summary.confidenceReason) {
+      lines.push(`- Confidence note: ${stock.summary.confidenceReason}`);
+    }
     lines.push("");
     lines.push("### Portfolio Ground Truth");
     lines.push(`- Opening quantity this day: ${stock.openingQuantity}`);
@@ -110,7 +128,7 @@ export function buildMarkdownReport(report) {
       lines.push("- No linked sources captured");
     } else {
       for (const citation of stock.summary.citations) {
-        lines.push(`- [${citation.title}](${citation.url}) - ${citation.source}`);
+        lines.push(`- [${citation.title}](${citation.url}) - ${formatCitationMeta(citation)}`);
       }
     }
     lines.push("");

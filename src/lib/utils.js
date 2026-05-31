@@ -107,4 +107,3 @@ export class ProgressLogger {
     console.error(`\x1b[31m✘\x1b[0m \x1b[1;31mError: ${message}\x1b[0m`);
   }
 }
-
