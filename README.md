@@ -39,7 +39,7 @@ Flow:
 3. Paste that packet into ChatGPT or Codex manually
 4. Get the final summary from your chat interface
 
-This is the easiest personal-use path.
+This is a manual, API-key-free personal-use path.
 
 ### Mode B: Automated BYO API mode
 
@@ -63,7 +63,6 @@ Supported providers:
 
 - Zerodha users with Indian equity portfolios
 - investors who want weekly stock updates grounded in real holdings data
-- builders who want a real-world AI automation project for GitHub
 
 ## Project scope
 
@@ -129,7 +128,7 @@ python -m pip install -r requirements.txt
 
 If your machine uses a different Python command, use that instead of `python`.
 
-### Beginner-friendly Windows path
+### Launcher path (Windows)
 
 You can use the included launcher:
 
@@ -137,7 +136,7 @@ You can use the included launcher:
 start.bat
 ```
 
-That gives a simple menu for:
+That provides options for:
 
 - setup
 - fetch holdings
@@ -198,7 +197,7 @@ By default, this project uses the hosted Kite MCP bridge:
 npx mcp-remote https://mcp.kite.trade/mcp
 ```
 
-That keeps onboarding simpler for most users. They do not need to create a separate Kite Connect developer app just to fetch their own holdings.
+This bypasses the need to create a separate Kite Connect developer app just to fetch holdings.
 
 ## API key and billing model
 
