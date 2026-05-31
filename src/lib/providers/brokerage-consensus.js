@@ -1,6 +1,8 @@
 import { dedupeBy, slugify } from "../utils.js";
 import { cleanDisplayText } from "../report/presentation.js";
 
+const BROKER_LOOKBACK_DAYS = 30;
+
 const BROKER_QUERY_TEMPLATES = [
   ({ companyName, symbol }) => `"${companyName}" "${symbol}" target price broker`,
   ({ companyName, symbol }) => `"${companyName}" "${symbol}" buy hold sell analyst`,
@@ -94,9 +96,42 @@ function normalizeText(value) {
     .trim();
 }
 
-function extractCompanyAliases(holding) {
+function extractAliasesFromSeedItems(symbol, items = []) {
+  const aliases = new Set();
+  const escapedSymbol = String(symbol || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const patterns = [
+    new RegExp(`([A-Za-z0-9&.,'\\- ]+?)\\s*\\((?:NSE|BSE):${escapedSymbol}\\)`, "i"),
+    new RegExp(`([A-Za-z0-9&.,'\\- ]+?)\\s*\\((?:${escapedSymbol})\\)`, "i"),
+  ];
+
+  for (const item of items) {
+    const title = cleanDisplayText(item?.title || "");
+    for (const pattern of patterns) {
+      const match = title.match(pattern);
+      if (!match?.[1]) {
+        continue;
+      }
+      const candidate = normalizeText(match[1].replace(/'s$/i, "").trim());
+      if (candidate && candidate.length >= 3) {
+        aliases.add(candidate);
+        const words = candidate.split(" ").filter(Boolean);
+        if (words.length >= 2) {
+          aliases.add(words.slice(0, 2).join(" "));
+        }
+        if (words.length >= 3) {
+          aliases.add(words.slice(0, 3).join(" "));
+        }
+      }
+    }
+  }
+
+  return aliases;
+}
+
+function extractCompanyAliases(holding, seedItems = []) {
   const raw = [
     holding.companyName,
+    holding.displayName,
     holding.symbol,
     holding.symbol?.replace(/&/g, " and "),
   ].filter(Boolean);
@@ -115,6 +150,10 @@ function extractCompanyAliases(holding) {
     if (words.length >= 3) {
       aliases.add(words.slice(0, 3).join(" "));
     }
+  }
+
+  for (const alias of extractAliasesFromSeedItems(holding.symbol, seedItems)) {
+    aliases.add(alias);
   }
 
   return [...aliases].filter((alias) => alias.length >= 3);
@@ -180,8 +219,7 @@ function shouldExcludeBySource(item) {
   return EXCLUDED_SOURCES.has(source);
 }
 
-function toConsensusItem(item, holding) {
-  const aliases = extractCompanyAliases(holding);
+function toConsensusItem(item, holding, aliases = extractCompanyAliases(holding)) {
   const relevantClause = extractRelevantClause(item.title, aliases);
   if (!relevantClause) {
     return null;
@@ -207,6 +245,28 @@ function toConsensusItem(item, holding) {
     rating,
     matchedClause: cleanDisplayText(relevantClause),
   };
+}
+
+function isWithinLookbackWindow(item, lookbackDays = BROKER_LOOKBACK_DAYS) {
+  const publishedAtMs = Date.parse(item?.publishedAt || "");
+  if (!publishedAtMs) {
+    return false;
+  }
+  const ageMs = Date.now() - publishedAtMs;
+  return ageMs >= 0 && ageMs <= lookbackDays * 24 * 60 * 60 * 1000;
+}
+
+function buildCoverageNote(count) {
+  if (count >= 5) {
+    return `Coverage was built from ${count} publicly visible brokerage recommendation items from the last ${BROKER_LOOKBACK_DAYS} days.`;
+  }
+  if (count >= 2) {
+    return `Only a small number of clearly attributable brokerage notes were visible in the last ${BROKER_LOOKBACK_DAYS} days, so the consensus should be read as directional rather than comprehensive.`;
+  }
+  if (count === 1) {
+    return `Only one clearly attributable brokerage note was visible in the last ${BROKER_LOOKBACK_DAYS} days, so this should be treated as a light outside signal rather than a firm consensus.`;
+  }
+  return `No clearly attributable brokerage recommendation items were surfaced in the last ${BROKER_LOOKBACK_DAYS} days, so this section relies more on price action and other public evidence than on broker consensus.`;
 }
 
 async function fetchGoogleNewsQuery(query) {
@@ -254,9 +314,12 @@ export class BrokerageConsensusProvider {
       [...seedItems, ...queryItems.flat()],
       (item) => item.url || item.id || item.title
     );
+    const aliases = extractCompanyAliases(holding, combinedItems);
 
     const parsedItems = combinedItems
-      .map((item) => toConsensusItem(item, holding))
+      .map((item) => toConsensusItem(item, holding, aliases))
+      .filter(Boolean)
+      .filter((item) => isWithinLookbackWindow(item))
       .filter(Boolean);
 
     const uniqueByBroker = pickLatestByBroker(parsedItems);
@@ -270,10 +333,7 @@ export class BrokerageConsensusProvider {
       counts[item.rating] += 1;
     }
 
-    const coverageNote =
-      uniqueByBroker.length >= 5
-        ? `Coverage was built from ${uniqueByBroker.length} publicly visible brokerage recommendation items for Indian equities.`
-        : `Limited brokerage coverage: only ${uniqueByBroker.length} public recommendation items were identified, so the consensus may be incomplete.`;
+    const coverageNote = buildCoverageNote(uniqueByBroker.length);
 
     return {
       scannedCount: uniqueByBroker.length,
@@ -285,9 +345,11 @@ export class BrokerageConsensusProvider {
 }
 
 export const __testables = {
+  BROKER_LOOKBACK_DAYS,
   extractCompanyAliases,
   extractRelevantClause,
   extractBroker,
+  isWithinLookbackWindow,
   extractRating,
   toConsensusItem,
   pickLatestByBroker,

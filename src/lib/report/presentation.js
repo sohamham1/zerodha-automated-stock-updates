@@ -304,6 +304,20 @@ function dominantEvidenceCategories(evidence) {
     .map(([category]) => category);
 }
 
+function brokerCoverageContext(consensus) {
+  const brokerCount = Number(consensus?.scannedCount || 0);
+  if (brokerCount >= 4) {
+    return "broker coverage is broad enough to use as a useful secondary signal";
+  }
+  if (brokerCount >= 2) {
+    return "broker coverage exists, but it is still fairly light";
+  }
+  if (brokerCount === 1) {
+    return "only one recent broker note was visible, so that outside view should be treated cautiously";
+  }
+  return "there were no clearly attributable recent broker calls in the public scan, which is common for parts of the market";
+}
+
 function categorizeCoverage(evidence, consensus) {
   const recentCount = evidence.filter((item) => item.freshness === "recent").length;
   const brokerCount = Number(consensus?.scannedCount || 0);
@@ -321,7 +335,7 @@ function categorizeCoverage(evidence, consensus) {
   }
   return {
     confidence: "low",
-    confidenceReason: "Confidence is low because evidence is sparse, stale, or supported by very limited broker coverage.",
+    confidenceReason: "Confidence is low because the view relies on sparse or stale evidence and only limited recent broker visibility.",
   };
 }
 
@@ -368,7 +382,7 @@ function buildRationale(holding, sentiment, consensus) {
   if ((consensus?.scannedCount || 0) >= 2) {
     reasons.push(`broker coverage reads Buy ${consensus.buy} / Neutral ${consensus.neutral} / Sell ${consensus.sell}`);
   } else {
-    reasons.push("external broker coverage is still thin");
+    reasons.push(brokerCoverageContext(consensus));
   }
 
   const prefix = sentiment === "unclear" ? "Unclear because" : `${sentiment.charAt(0).toUpperCase() + sentiment.slice(1)} because`;
@@ -385,7 +399,7 @@ function buildMissingEvidence(evidence, consensus) {
     items.push("Some supporting references are older and should be treated as background, not fresh confirmation.");
   }
   if ((consensus?.scannedCount || 0) < 2) {
-    items.push("Broker coverage is limited, so consensus signals are incomplete.");
+    items.push("Recent broker visibility is limited, so the report leans more heavily on price action and non-broker public evidence.");
   }
   return items;
 }
@@ -404,7 +418,7 @@ function buildWatchpoints(holding, evidence, consensus) {
     points.push("The recent weekly drop deserves a follow-up check against filings, management commentary, or sector news.");
   }
   if ((consensus?.scannedCount || 0) < 2) {
-    points.push("Independent broker confirmation is limited, so treat outside consensus as directional only.");
+    points.push("Use outside broker commentary only as a light cross-check here, because recent public coverage is limited.");
   }
   if (!points.length && evidence.length) {
     points.push("Track whether the latest evidence continues to show up in filings, management commentary, or broker follow-ups.");

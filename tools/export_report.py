@@ -346,7 +346,7 @@ def add_dashboard(workbook, report):
     start_row = 20
     sheet[f"A{start_row}"] = "Portfolio snapshot"
     sheet[f"A{start_row}"].font = Font(name="Aptos", size=11, bold=True, color=PALETTE["navy"])
-    headers = ["Holding", "Weight %", "Current Value", "All-time P&L", "Return %", "Sentiment", "Broker Coverage", "Consensus Mix"]
+    headers = ["Holding", "Weight %", "Current Value", "All-time P&L", "Return %", "Sentiment", "Broker Coverage (30d)", "Consensus Mix"]
     header_row = start_row + 1
     for i, header in enumerate(headers, start=1):
         sheet.cell(row=header_row, column=i, value=header)
@@ -390,7 +390,7 @@ def add_heatmap_sheet(workbook, report):
         "A quick visual scan of exposure, all-time return, P&L, sentiment, and broker coverage across the portfolio.",
         report["generatedAt"],
     )
-    headers = ["Ticker", "Weight %", "Return %", "All-time P&L", "Broker Coverage", "Buy", "Neutral", "Sell", "Sentiment"]
+    headers = ["Ticker", "Weight %", "Return %", "All-time P&L", "Broker Coverage (30d)", "Buy", "Neutral", "Sell", "Sentiment"]
     row = 7
     for i, header in enumerate(headers, start=1):
         sheet.cell(row=row, column=i, value=header)
@@ -436,7 +436,7 @@ def add_holdings_sheet(workbook, report):
     headers = [
         "Exchange", "Ticker", "Display Name", "ISIN", "Qty", "Buy Avg", "Last Price",
         "Invested Value", "Current Value", "All-time P&L", "Return %", "Weight %",
-        "Weekly Move %", "50-day SMA", "14-day RSI", "Volatility %", "Sentiment", "Broker Coverage",
+        "Weekly Move %", "50-day SMA", "14-day RSI", "Volatility %", "Sentiment", "Broker Coverage (30d)",
     ]
     row = 7
     for i, header in enumerate(headers, start=1):
@@ -925,7 +925,7 @@ def stock_card_table(holding):
         ["All-time P&L", format_currency(holding["pnl"])],
         ["Portfolio weight", format_pct(holding["portfolioWeight"])],
         ["Weekly move", format_pct(holding["weeklyChangePct"])],
-        ["Broker coverage", str(bc.get("scannedCount", 0))],
+        ["Broker coverage (30d)", str(bc.get("scannedCount", 0))],
     ]
     rows = [["Metric", "Value", "Metric", "Value"]] + [[a, b, c, d] for (a, b), (c, d) in zip(left, right)]
     table = Table(rows, colWidths=[3.6 * cm, 4.0 * cm, 3.6 * cm, 3.8 * cm])
